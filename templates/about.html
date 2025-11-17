@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="about">
+    <div class="container">
+        <h1>About Me</h1>
+        <div class="about-content">
+            <div class="about-text">
+                <h2>Hello! I'm {{ data.name }}</h2>
+                <p>{{ data.about }}</p>
+                <p>I'm currently studying and building projects to improve my skills in web development and programming.</p>
+                
+                <h3>What I'm Learning</h3>
+                <ul>
+                    <li>Web Development with Flask and Python</li>
+                    <li>Frontend technologies (HTML, CSS, JavaScript)</li>
+                    <li>Version Control with Git</li>
+                    <li>Deployment and DevOps</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
