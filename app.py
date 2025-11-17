@@ -39,36 +39,23 @@ def index():
 
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
-    try:
-        if request.method == 'POST':
-            name = request.form.get('name', '').strip()
-            email = request.form.get('email', '').strip()
-            message = request.form.get('message', '').strip()
-            
-            # Basic validation
-            if not name or not email or not message:
-                flash('Please fill in all fields', 'error')
-            elif len(message) < 5:
-                flash('Message should be at least 5 characters long', 'error')
-            else:
-                # Save message to memory
-                new_message = {
-                    'name': name,
-                    'email': email,
-                    'message': message,
-                    'timestamp': datetime.now().isoformat()
-                }
-                messages_store.append(new_message)
-                
-                # Log to Vercel console
-                print(f"NEW MESSAGE - Name: {name}, Email: {email}, Message: {message}")
-                
-                flash('Message sent successfully! Thank you for reaching out.', 'success')
-                return redirect(url_for('contact'))
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip()
+        message = request.form.get('message', '').strip()
         
-        return render_template('contact.html', data=portfolio_data)
-    except Exception as e:
-        return f"Error in contact form: {str(e)}", 500
+        # Force the message to appear in logs
+        import sys
+        print("FORCE LOG - NEW MESSAGE:", file=sys.stderr)
+        print(f"NAME: {name}", file=sys.stderr)
+        print(f"EMAIL: {email}", file=sys.stderr) 
+        print(f"MESSAGE: {message}", file=sys.stderr)
+        print("END MESSAGE", file=sys.stderr)
+        
+        flash('✅ Message sent successfully!', 'success')
+        return redirect(url_for('contact'))
+    
+    return render_template('contact.html', data=portfolio_data)
 
 @app.route('/about')
 def about():
