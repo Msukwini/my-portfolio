@@ -2,9 +2,15 @@ from flask import Flask, render_template, request, flash, redirect, url_for, jso
 import os
 import json
 from datetime import datetime
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-' + str(os.urandom(16)))
+
+# Robust secret key handling for Vercel
+secret_key = os.environ.get('SECRET_KEY', 'msukwini-portfolio-secret-2024-student-project')
+app.secret_key = secret_key
 
 # ===== PORTFOLIO DATA - UPDATE THIS WITH YOUR INFO! =====
 portfolio_data = {
@@ -31,32 +37,18 @@ portfolio_data = {
     }
 }
 
-# ===== CONFIGURATION =====
-MESSAGES_FILE = 'messages.json'
+# ===== MESSAGE STORAGE SOLUTION FOR VERCEL =====
+# In Vercel, we can't write to files, so we'll use a simple in-memory store
+# Note: This resets when the serverless function restarts (normal for Vercel)
 
-def init_messages_file():
-    """Initialize messages file if it doesn't exist"""
-    if not os.path.exists(MESSAGES_FILE):
-        try:
-            with open(MESSAGES_FILE, 'w') as f:
-                json.dump([], f)
-            print("Messages file initialized")
-        except Exception as e:
-            print(f"Error initializing messages file: {e}")
+# Simple in-memory message store
+messages_store = []
 
 def save_message(name, email, message):
-    """Save message to JSON file with error handling"""
+    """Save message to in-memory store (works on Vercel)"""
     try:
-        # Read existing messages
-        if os.path.exists(MESSAGES_FILE):
-            with open(MESSAGES_FILE, 'r') as f:
-                messages = json.load(f)
-        else:
-            messages = []
-        
-        # Create new message object
         new_message = {
-            'id': len(messages) + 1,
+            'id': len(messages_store) + 1,
             'name': name.strip(),
             'email': email.strip().lower(),
             'message': message.strip(),
@@ -64,30 +56,34 @@ def save_message(name, email, message):
             'read': False
         }
         
-        # Add to messages list
-        messages.append(new_message)
+        messages_store.append(new_message)
         
-        # Save back to file
-        with open(MESSAGES_FILE, 'w') as f:
-            json.dump(messages, f, indent=2)
+        # Log the message (visible in Vercel logs)
+        print(f"📧 NEW MESSAGE: From {name} ({email})")
+        print(f"💬 Message: {message[:100]}...")  # First 100 chars
         
-        print(f"Message saved from {name} ({email})")
         return True
         
     except Exception as e:
-        print(f"Error saving message: {e}")
+        print(f"❌ Error saving message: {e}")
         return False
 
 def get_messages_count():
     """Get total number of messages received"""
+    return len(messages_store)
+
+def send_email_notification(name, email, message):
+    """Send email notification when someone submits the contact form"""
     try:
-        if os.path.exists(MESSAGES_FILE):
-            with open(MESSAGES_FILE, 'r') as f:
-                messages = json.load(f)
-            return len(messages)
-        return 0
-    except:
-        return 0
+        # This is optional - you can set up email later
+        # For now, we'll just log it
+        print(f"📧 EMAIL NOTIFICATION WOULD BE SENT:")
+        print(f"   From: {name} <{email}>")
+        print(f"   Message: {message}")
+        return True
+    except Exception as e:
+        print(f"Email notification error: {e}")
+        return False
 
 # ===== ROUTES =====
 @app.route('/')
@@ -119,12 +115,9 @@ def contact():
         else:
             # Save message
             if save_message(name, email, message):
+                # Optional: Send email notification
+                send_email_notification(name, email, message)
                 flash('✅ Message sent successfully! I\'ll get back to you soon.', 'success')
-                
-                # Optional: You can add email notification here later
-                # For now, we'll just log it
-                print(f"New contact form submission from {name} ({email})")
-                
             else:
                 flash('❌ Sorry, there was an error sending your message. Please try again.', 'error')
             
@@ -137,7 +130,7 @@ def about():
     """About page"""
     return render_template('about.html', data=portfolio_data)
 
-# ===== API ROUTES (Optional) =====
+# ===== API ROUTES =====
 @app.route('/api/messages/count')
 def api_message_count():
     """API endpoint to get message count"""
@@ -151,7 +144,8 @@ def health_check():
         'status': 'healthy', 
         'service': 'Portfolio API',
         'timestamp': datetime.now().isoformat(),
-        'message_count': get_messages_count()
+        'message_count': get_messages_count(),
+        'environment': 'Vercel Serverless'
     })
 
 @app.route('/api/portfolio')
@@ -168,20 +162,13 @@ def not_found(error):
 def internal_error(error):
     return render_template('500.html', data=portfolio_data), 500
 
-# ===== INITIALIZATION =====
-# Remove the deprecated before_first_request decorator
-# We'll initialize when the app starts instead
-
 # ===== MAIN APPLICATION =====
 if __name__ == '__main__':
-    # Initialize messages file
-    init_messages_file()
-    
     # Run the application
     print("🎉 Portfolio application starting...")
-    print("📧 Messages will be saved to:", MESSAGES_FILE)
+    print("💡 Using in-memory message storage (Vercel compatible)")
     print("🌐 Server will run on: http://127.0.0.1:5000")
-    print("💡 Make sure to update your personal information in the portfolio_data dictionary!")
+    print("📧 Messages will be logged to console and stored in memory")
     
     app.run(
         host='0.0.0.0',
