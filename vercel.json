@@ -19,8 +19,5 @@
       "src": "/(.*)",
       "dest": "app.py"
     }
-  ],
-  "env": {
-    "SECRET_KEY": "your-portfolio-secret-key-msukwini-2024"
-  }
+  ]
 }

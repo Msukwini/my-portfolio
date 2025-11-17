@@ -1,18 +1,18 @@
 from flask import Flask, render_template, request, flash, redirect, url_for, jsonify
 import os
-import requests
 from datetime import datetime
 
 app = Flask(__name__)
-secret_key = os.environ.get('SECRET_KEY', 'msukwini-portfolio-secret-2024-student-project')
-app.secret_key = secret_key
 
-# ===== PORTFOLIO DATA =====
+# Simple secret key for Vercel
+app.secret_key = os.environ.get('SECRET_KEY', 'simple-secret-key-for-vercel')
+
+# Portfolio data
 portfolio_data = {
     "name": "Msukwini",
     "title": "Student Developer", 
     "about": "I'm a passionate student developer learning web development and building cool projects.",
-    "skills": ["Python", "Flask", "HTML/CSS", "JavaScript", "Git", "SQL"],
+    "skills": ["Python", "Flask", "HTML/CSS", "JavaScript", "Git"],
     "projects": [
         {
             "name": "Personal Portfolio",
@@ -23,108 +23,81 @@ portfolio_data = {
     "contact": {
         "email": "lwzimsukwini@gmail.com",
         "github": "https://github.com/Msukwini",
-        "linkedin": "https://linkedin.com/in/your-profile"
+        "linkedin": "#"
     }
 }
 
-# ===== MESSAGE STORAGE =====
+# Simple in-memory storage
 messages_store = []
 
-def log_message_to_console(name, email, message):
-    """Log message clearly to Vercel console"""
-    try:
-        print("🚨" * 20)
-        print("🚨 IMPORTANT: NEW PORTFOLIO MESSAGE")
-        print("🚨" * 20)
-        print(f"👤 NAME: {name}")
-        print(f"📧 EMAIL: {email}")
-        print(f"💬 MESSAGE: {message}")
-        print(f"⏰ TIME: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print("🚨" * 20)
-        print("💡 Check Vercel logs to see this message!")
-        print("🚨" * 20)
-        return True
-    except Exception as e:
-        print(f"❌ Error logging message: {e}")
-        return False
-
-def save_message(name, email, message):
-    """Save message and log it clearly"""
-    try:
-        new_message = {
-            'id': len(messages_store) + 1,
-            'name': name.strip(),
-            'email': email.strip().lower(),
-            'message': message.strip(),
-            'timestamp': datetime.now().isoformat(),
-        }
-        
-        messages_store.append(new_message)
-        
-        # Log message clearly to console
-        log_message_to_console(name, email, message)
-        
-        return True
-        
-    except Exception as e:
-        print(f"❌ Error saving message: {e}")
-        return False
-
-def get_messages_count():
-    return len(messages_store)
-
-# ===== ROUTES =====
 @app.route('/')
 def index():
-    message_count = get_messages_count()
-    return render_template('index.html', data=portfolio_data, message_count=message_count)
+    try:
+        return render_template('index.html', data=portfolio_data)
+    except Exception as e:
+        return f"Error loading page: {str(e)}", 500
 
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
-    if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        email = request.form.get('email', '').strip()
-        message = request.form.get('message', '').strip()
-        
-        if not name or not email or not message:
-            flash('❌ Please fill in all fields', 'error')
-        elif len(name) < 2:
-            flash('❌ Name should be at least 2 characters long', 'error')
-        elif len(message) < 10:
-            flash('❌ Message should be at least 10 characters long', 'error')
-        elif '@' not in email or '.' not in email:
-            flash('❌ Please enter a valid email address', 'error')
-        else:
-            if save_message(name, email, message):
-                flash('✅ Message sent successfully! I\'ll check my logs and get back to you soon.', 'success')
+    try:
+        if request.method == 'POST':
+            name = request.form.get('name', '').strip()
+            email = request.form.get('email', '').strip()
+            message = request.form.get('message', '').strip()
+            
+            # Basic validation
+            if not name or not email or not message:
+                flash('Please fill in all fields', 'error')
+            elif len(message) < 5:
+                flash('Message should be at least 5 characters long', 'error')
             else:
-                flash('❌ Sorry, there was an error. Please try again.', 'error')
-            return redirect(url_for('contact'))
-    
-    return render_template('contact.html', data=portfolio_data)
+                # Save message to memory
+                new_message = {
+                    'name': name,
+                    'email': email,
+                    'message': message,
+                    'timestamp': datetime.now().isoformat()
+                }
+                messages_store.append(new_message)
+                
+                # Log to Vercel console
+                print(f"NEW MESSAGE - Name: {name}, Email: {email}, Message: {message}")
+                
+                flash('Message sent successfully! Thank you for reaching out.', 'success')
+                return redirect(url_for('contact'))
+        
+        return render_template('contact.html', data=portfolio_data)
+    except Exception as e:
+        return f"Error in contact form: {str(e)}", 500
 
 @app.route('/about')
 def about():
-    return render_template('about.html', data=portfolio_data)
+    try:
+        return render_template('about.html', data=portfolio_data)
+    except Exception as e:
+        return f"Error loading about page: {str(e)}", 500
 
-@app.route('/api/messages')
-def api_messages():
-    """API to see recent messages (for debugging)"""
-    return jsonify({
-        'count': len(messages_store),
-        'messages': messages_store[-5:]  # Last 5 messages
-    })
-
+# Health check endpoint
 @app.route('/api/health')
 def health_check():
     return jsonify({
-        'status': 'healthy', 
-        'message_count': get_messages_count(),
+        'status': 'healthy',
+        'service': 'portfolio',
         'timestamp': datetime.now().isoformat()
     })
 
+# Simple error handlers
+@app.errorhandler(404)
+def not_found(error):
+    return "Page not found", 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return "Internal server error", 500
+
+# Vercel needs this
 if __name__ == '__main__':
-    print("🎉 Portfolio starting...")
-    print("📧 Messages will be logged to console")
-    print("🔍 Check Vercel logs to see messages!")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(debug=True)
+else:
+    # For Vercel serverless
+    application = app
